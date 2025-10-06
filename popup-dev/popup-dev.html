@@ -15,6 +15,16 @@
             <label for="userQueryInput">Запрос пользователя:</label>
             <input type="text" id="userQueryInput" placeholder="Введите, что вы хотите посмотреть..." />
         </div>
+        <div class="control-group">
+            <label for="top10JsonInput">Загрузить топ-10 видео (JSON):</label>
+            <textarea id="top10JsonInput" placeholder='[
+    {
+      "title": "...",
+      "videoId": "...",
+      "relevanceScore10": 10
+    }
+  ]'></textarea>
+        </div>
         <!-- Выбор сценария -->
         <div class="control-group">
             <label for="scenarioSelect">Сценарий:</label>
@@ -32,9 +42,7 @@
                 <option value="step-scroll">1. Скролл страницы</option>
                 <option value="step-parse-videos">2. Спарсить все видео (без Shorts)</option>
                 <option value="step-gpt-get-top10-by-title">3. GPT: получить топ-10 видео по названию</option>
-                <option value="step3">3. Найти видео на YouTube</option>
-                <option value="step4">4. Извлечь отрывки из видео</option>
-                <option value="step5">5. Сформировать топ-5 и отобразить</option>
+                <option value="step-transcription">4. Формирование транскрибации</option>
             </select>
         </div>
 

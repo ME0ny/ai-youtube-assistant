@@ -6,6 +6,7 @@ import { ChromeStorageLogAdapter } from '../adapters/ChromeStorageLogAdapter.js'
 import { scrollPageNTimes } from '../core/utils/scroller.js';
 import { parseAllVideoCards } from '../core/utils/parser.js';
 import { askGPT } from '../ai/ai-service.js';
+import { getProcessedTranscript } from '../ai/transcription-service.js';
 import { formatVideoListForGPT, buildTop10ByTitlePrompt, parseGPTTop10Response } from '../core/utils/ai-utils.js';
 
 // 2. Создаём глобальный экземпляр логгера
@@ -207,6 +208,59 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             } catch (err) {
                 const errorMsg = err.message || 'Неизвестная ошибка';
                 logger.error(`❌ Ошибка этапа получения топ-10 по названию: ${errorMsg}`, { module: 'GPTGetTop10ByTitleStep' });
+                sendResponse({ status: "error", message: errorMsg });
+            }
+        })();
+        return true;
+    }
+
+    if (request.action === "runTranscriptionStep") {
+        (async () => {
+            try {
+                const top10Json = request.params?.top10Json?.trim();
+                if (!top10Json) {
+                    throw new Error("Пустой JSON с топ-10 видео.");
+                }
+
+                let top10Data;
+                try {
+                    top10Data = JSON.parse(top10Json);
+                } catch (e) {
+                    throw new Error("Неверный формат JSON с топ-10 видео.");
+                }
+
+                if (!Array.isArray(top10Data)) {
+                    throw new Error("JSON должен содержать массив объектов с видео.");
+                }
+
+                logger.info(`🎬 Начинаем обработку транскрипций для ${top10Data.length} видео...`, { module: 'TranscriptionStep' });
+
+                const results = [];
+
+                for (const video of top10Data) {
+                    const { title, videoId } = video;
+                    if (!title || !videoId) {
+                        logger.warn(`⚠️ Пропущено видео без названия или ID: ${JSON.stringify(video)}`, { module: 'TranscriptionStep' });
+                        continue;
+                    }
+
+                    logger.info(`📝 Обработка транскрипции для: "${title}" (ID: ${videoId})`, { module: 'TranscriptionStep' });
+
+                    try {
+                        const chunks = await getProcessedTranscript(videoId);
+                        results.push({ title, chunks });
+                        logger.success(`✅ Транскрипция для "${title}" готова (${chunks.length} чанков).`, { module: 'TranscriptionStep' });
+                    } catch (err) {
+                        logger.error(`❌ Ошибка транскрипции для "${title}": ${err.message}`, { module: 'TranscriptionStep' });
+                    }
+                }
+
+                logger.success(`🎉 Обработка транскрипций завершена.`, { module: 'TranscriptionStep' });
+
+                sendResponse({ status: "success", results });
+            } catch (err) {
+                const errorMsg = err.message || 'Неизвестная ошибка';
+                logger.error(`❌ Ошибка этапа транскрипции: ${errorMsg}`, { module: 'TranscriptionStep' });
                 sendResponse({ status: "error", message: errorMsg });
             }
         })();

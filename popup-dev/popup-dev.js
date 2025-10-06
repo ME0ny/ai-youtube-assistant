@@ -135,6 +135,56 @@ class DevPopup {
             return;
         }
 
+        if (stepId === 'step-transcription') {
+            const top10Json = document.getElementById('top10JsonInput').value.trim();
+            if (!top10Json) {
+                this.log(`❌ Пустой JSON с топ-10 видео.`, 'error');
+                return;
+            }
+
+            this.log(`⏭️ Запуск этапа: Формирование транскрибации...`, 'info');
+
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    action: "runTranscriptionStep",
+                    params: { top10Json }
+                });
+
+                if (response?.status === 'success') {
+                    this.log(`✅ Результаты транскрипции:`, 'success');
+
+                    // --- Новый формат вывода ---
+                    const output = response.results.map(item => {
+                        const transcript = item.chunks.map((chunkText, index) => ({
+                            chunk: index + 1,
+                            chunk_text: chunkText
+                        }));
+
+                        return {
+                            title: item.title,
+                            videoID: item.videoId, // Используем videoId из top10Json
+                            transcript
+                        };
+                    });
+
+                    console.group('📋 Результат транскрипции (скопируйте ниже):');
+                    console.table(output); // Вывод в виде таблицы
+                    console.groupEnd();
+
+                    // Для удобства копирования — выводим как объект
+                    console.log('📋 Полный объект (для копирования):');
+                    console.log(JSON.stringify(output, null, 2));
+
+                    // Выводим в журнал popup
+                    this.log(`Всего обработано видео: ${output.length}`, 'info');
+                } else {
+                    throw new Error(response?.message || 'Неизвестная ошибка');
+                }
+            } catch (err) {
+                this.log(`❌ Ошибка транскрипции: ${err.message}`, 'error');
+            }
+            return;
+        }
         // ... остальные этапы
     }
 
