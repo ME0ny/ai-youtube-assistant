@@ -58,22 +58,53 @@ class DevPopup {
         }
     }
 
+    // popup-dev/popup-dev.js → метод runStep()
     async runStep() {
         const stepId = this.stepSelect.value;
         const scenarioId = this.scenarioSelect.value;
-        this.log(`⏭️ Запуск этапа "${stepId}" для сценария "${scenarioId}"`);
-        try {
-            // В будущем можно добавить специальный action: "runStep"
-            // Пока просто эмулируем через лог
-            await chrome.runtime.sendMessage({
-                action: 'runStep',
-                scenarioId,
-                stepId
-            });
-            this.log(`✅ Этап "${stepId}" завершён`);
-        } catch (err) {
-            this.log(`❌ Ошибка этапа: ${err.message}`, 'error');
+
+        if (stepId === 'step-scroll') {
+            this.log(`⏭️ Запуск этапа: Скролл страницы`);
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    action: "runScrollStep",
+                    params: {
+                        count: 10,      // количество скроллов
+                        delayMs: 500, // задержка между скроллами
+                        step: 1000     // пикселей за раз
+                    }
+                });
+                if (response?.status === 'success') {
+                    this.log(`✅ Скролл завершён`);
+                } else {
+                    throw new Error(response?.message || 'Неизвестная ошибка');
+                }
+            } catch (err) {
+                this.log(`❌ Ошибка скролла: ${err.message}`, 'error');
+            }
+            return;
         }
+
+        if (stepId === 'step-parse-videos') {
+            this.log(`⏭️ Запуск этапа: Парсинг всех видео...`);
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    action: "runParseVideosStep" // ← Обновлённый action
+                });
+                if (response?.status === 'success') {
+                    const count = response.data.length;
+                    this.log(`✅ Успешно спарсено ${count} видео.`, 'success');
+                    console.table(response.data); // Вывод в консоль для удобства
+                } else {
+                    throw new Error(response?.message || 'Неизвестная ошибка');
+                }
+            } catch (err) {
+                this.log(`❌ Ошибка парсинга: ${err.message}`, 'error');
+            }
+            return;
+        }
+
+        // ... остальные этапы
     }
 
     clearLog() {
