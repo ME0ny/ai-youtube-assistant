@@ -10,7 +10,7 @@ export async function askGPT(prompt) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer #O6m4W#$sana*rXqs&owLGU03VVg&HIDOHPH8UbYL%@iu02qmoS*9cu!%C@qZAZk'  // 👈 Изменено
+            'Authorization': 'Bearer #O6m4W#$sana*rXqs&owLGU03VVg&HIDOHPH8UbYL%@iu02qmoS*9cu!%C@qZAZk'
         },
         body: JSON.stringify({ prompt })
     });
@@ -20,6 +20,6 @@ export async function askGPT(prompt) {
         throw new Error(`Ошибка API (${response.status}): ${errorText}`);
     }
 
-    const result = await response.text();
-    return result;
+    const result = await response.json(); // 👈 Теперь ждём JSON
+    return result.response; // 👈 Возвращаем поле response
 }

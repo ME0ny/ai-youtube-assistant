@@ -6,6 +6,8 @@ import { ChromeStorageLogAdapter } from '../adapters/ChromeStorageLogAdapter.js'
 import { scrollPageNTimes } from '../core/utils/scroller.js';
 import { parseAllVideoCards } from '../core/utils/parser.js';
 import { askGPT } from '../ai/ai-service.js';
+import { formatVideoListForGPT, buildTop10ByTitlePrompt, parseGPTTop10Response } from '../core/utils/ai-utils.js';
+
 // 2. Создаём глобальный экземпляр логгера
 export const logger = new Logger({
     maxSize: 1000,
@@ -144,7 +146,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
-    if (request.action === "runGPTAnalyzeStep") {
+    if (request.action === "runGPTGetTop10ByTitleStep") { // 👈 Изменено имя
         (async () => {
             try {
                 const userQuery = request.params?.userQuery?.trim();
@@ -167,7 +169,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                 // --- 3. Создаём контекст ---
                 const tempContext = {
-                    log: (msg, opts = {}) => logger.log(msg, opts.level || 'info', { module: 'GPTAnalyzeStep', ...opts }),
+                    log: (msg, opts = {}) => logger.log(msg, opts.level || 'info', { module: 'GPTGetTop10ByTitleStep', ...opts }),
                     tabId,
                     params: request.params || {},
                     abortSignal: async () => { },
@@ -183,32 +185,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                 const videos = parseResponse.data;
 
-                // --- 5. Формируем список "Название;Длительность" ---
-                const videoList = videos
-                    .filter(v => v.title && v.duration && v.duration !== '—')
-                    .map(v => `${v.title};${v.duration}`)
-                    .join('\n');
+                // --- 5. Формируем список "Название;Длительность" через утилиту ---
+                const videoList = formatVideoListForGPT(videos);
 
                 if (!videoList) {
                     throw new Error("Нет подходящих видео для анализа (не найдены длительности).");
                 }
-                console.log(videoList);
-                console.log(userQuery);
-                // --- 6. Формируем промпт ---
-                const prompt = `you are a precise video-matching assistant. Your input consists of two parts: (1) a user request and (2) a list of available videos in CSV format "Video Title;Duration", where Duration is in HH:MM:SS. First, analyze the user request to determine the topic/intent (e.g., relaxing content, tech news, aviation) and check if the user mentions available viewing time (e.g., "I have 1 hour"). If time is specified, convert it to total seconds and exclude any video whose duration exceeds that time (allow ±2 minutes tolerance). If no time is mentioned, do not filter by duration. For each remaining video, assess how well its title matches the user's topic/intent and assign a relevance score from 0.0 (completely unrelated) to 1.0 (perfect match), based only on the title—do not assume content beyond what the title states. Only include videos with relevance score ≥ 0.4. If no videos meet both relevance and duration criteria, output exactly: No such videos available. Otherwise, output a markdown table with two columns: "Video Title" (exact title from input) and "Relevance Score" (rounded to two decimal places). Do not include durations in the output, and do not add any extra text, explanations, or formatting beyond the table. Use this exact format: Video Title;Relevance Score
-Выводи не более 10 названий, они должны быть отсортированы по relevance score по убыванию
-User request: ${userQuery}
-Available videos: ${videoList}`;
+
+                // --- 6. Формируем промпт через утилиту ---
+                const prompt = buildTop10ByTitlePrompt(userQuery, videoList);
 
                 // --- 7. Отправляем в API через ai-service ---
-                const gptResult = await askGPT(prompt);
+                const gptResponse = await askGPT(prompt);
 
-                logger.info(`✅ Ответ от GPT: ${gptResult}`, { module: 'GPTAnalyzeStep' });
+                // --- 8. Обрабатываем ответ от GPT ---
+                const top10Results = parseGPTTop10Response(gptResponse, videos);
 
-                sendResponse({ status: "success", result: gptResult });
+                logger.info(`✅ Топ-10 видео от GPT:`, { module: 'GPTGetTop10ByTitleStep', data: top10Results });
+
+                sendResponse({ status: "success", data: top10Results });
             } catch (err) {
                 const errorMsg = err.message || 'Неизвестная ошибка';
-                logger.error(`❌ Ошибка этапа GPT-анализа: ${errorMsg}`, { module: 'GPTAnalyzeStep' });
+                logger.error(`❌ Ошибка этапа получения топ-10 по названию: ${errorMsg}`, { module: 'GPTGetTop10ByTitleStep' });
                 sendResponse({ status: "error", message: errorMsg });
             }
         })();

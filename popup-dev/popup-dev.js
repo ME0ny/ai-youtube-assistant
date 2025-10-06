@@ -104,31 +104,33 @@ class DevPopup {
             return;
         }
 
-        if (stepId === 'step-gpt-analyze') {
+        if (stepId === 'step-gpt-get-top10-by-title') {
             const userQuery = document.getElementById('userQueryInput').value.trim();
             if (!userQuery) {
                 this.log(`❌ Пустой запрос пользователя.`, 'error');
                 return;
             }
 
-            this.log(`⏭️ Запуск этапа: Отправка видео в GPT для анализа...`, 'info');
+            this.log(`⏭️ Запуск этапа: GPT — получить топ-10 видео по названию...`, 'info');
             this.log(`📝 Запрос пользователя: "${userQuery}"`, 'info');
 
             try {
                 const response = await chrome.runtime.sendMessage({
-                    action: "runGPTAnalyzeStep",
+                    action: "runGPTGetTop10ByTitleStep", // 👈 Изменено имя
                     params: { userQuery }
                 });
 
                 if (response?.status === 'success') {
-                    this.log(`✅ Ответ от GPT:`, 'success');
-                    this.log(response.result, 'info');
-                    console.log("Ответ от GPT:", response.result);
+                    this.log(`✅ Топ-10 видео от GPT:`, 'success');
+                    console.table(response.data); // Вывод в консоль как таблицу
+                    for (const item of response.data) {
+                        this.log(`${item.title};${item.videoId};${item.relevanceScore10}`, 'info');
+                    }
                 } else {
                     throw new Error(response?.message || 'Неизвестная ошибка');
                 }
             } catch (err) {
-                this.log(`❌ Ошибка GPT-анализа: ${err.message}`, 'error');
+                this.log(`❌ Ошибка получения топ-10: ${err.message}`, 'error');
             }
             return;
         }
