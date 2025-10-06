@@ -67,6 +67,7 @@
                 <option value="step-transcription">4. Формирование транскрибации</option>
                 <option value="step-gpt-deep-eval">5. GPT: глубокая оценка видео</option>
                 <option value="step-clip-generation">6. Формирование нарезок</option>
+                <option value="step-display-clips">7. Вывод нарезок в интерфейс</option>
             </select>
         </div>
 
@@ -89,6 +90,24 @@
         <div class="control-group">
             <label for="videoClipsOutput">Результаты нарезок (видео):</label>
             <div id="videoClipsOutput" class="video-clips-output"></div>
+        </div>
+
+        <div class="control-group">
+            <label for="clipsJsonInput">Загрузить нарезки (JSON):</label>
+            <textarea id="clipsJsonInput" placeholder='[
+    {
+      "title": "Незаметные технологии на твоем велосипеде...",
+      "videoId": "EkXhXKtvdf8",
+      "score": 9,
+      "clips": [
+        {
+          "start": "00:48",
+          "end": "02:07",
+          "title": "Почему зубья на звёздочках выглядят как брак"
+        }
+      ]
+    }
+  ]'></textarea>
         </div>
     </div>
 

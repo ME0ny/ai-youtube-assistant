@@ -326,6 +326,80 @@ class DevPopup {
             }
             return;
         }
+
+        if (stepId === 'step-display-clips') {
+            const clipsJson = document.getElementById('clipsJsonInput').value.trim();
+            if (!clipsJson) {
+                this.log(`❌ Пустой JSON с нарезками.`, 'error');
+                return;
+            }
+
+            this.log(`⏭️ Запуск этапа: Вывод нарезок в интерфейс...`, 'info');
+
+            try {
+                const clipsData = JSON.parse(clipsJson);
+                if (!Array.isArray(clipsData)) {
+                    throw new Error("JSON должен содержать массив объектов с нарезками.");
+                }
+
+                // Выводим в поле videoClipsOutput
+                const outputDiv = document.getElementById('videoClipsOutput');
+                outputDiv.innerHTML = '';
+
+                for (const item of clipsData) {
+                    const videoBlock = document.createElement('div');
+                    videoBlock.className = 'video-block';
+
+                    // Название видео (ссылка на YouTube)
+                    const titleLink = document.createElement('a');
+                    titleLink.href = `https://www.youtube.com/watch?v=${item.videoId}`;
+                    titleLink.target = '_blank';
+                    titleLink.textContent = `${item.title} (Оценка: ${item.score})`;
+                    titleLink.className = 'video-title-link';
+
+                    videoBlock.appendChild(titleLink);
+
+                    // Контейнер для нарезок
+                    const clipsContainer = document.createElement('div');
+                    clipsContainer.className = 'clips-container';
+
+                    for (const clip of item.clips) {
+                        const clipBlock = document.createElement('div');
+                        clipBlock.className = 'clip-block';
+
+                        // Плеер YouTube с таймингом
+                        const startTimeSec = timeToSeconds(clip.start);
+                        const endTimeSec = timeToSeconds(clip.end);
+
+                        const iframe = document.createElement('iframe');
+                        iframe.width = '320';
+                        iframe.height = '180';
+                        iframe.src = `https://www.youtube.com/embed/${item.videoId}?start=${startTimeSec}&end=${endTimeSec}&autoplay=0`;
+                        iframe.frameBorder = '0';
+                        iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture';
+                        iframe.allowFullscreen = true;
+
+                        clipBlock.appendChild(iframe);
+
+                        // Информация о нарезке
+                        const clipInfo = document.createElement('div');
+                        clipInfo.className = 'clip-info';
+                        clipInfo.textContent = `${clip.title} (${clip.start} - ${clip.end})`;
+                        clipBlock.appendChild(clipInfo);
+
+                        clipsContainer.appendChild(clipBlock);
+                    }
+
+                    videoBlock.appendChild(clipsContainer);
+                    outputDiv.appendChild(videoBlock);
+                }
+
+                this.log(`✅ Выведено ${clipsData.length} видео с нарезками.`, 'success');
+            } catch (err) {
+                this.log(`❌ Ошибка вывода нарезок: ${err.message}`, 'error');
+            }
+            return;
+        }
         // ... остальные этапы
     }
 

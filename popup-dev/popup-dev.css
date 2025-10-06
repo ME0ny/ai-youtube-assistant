@@ -161,3 +161,28 @@ h1 {
     color: #0284c7;
     text-decoration: underline;
 }
+
+/* popup-dev/popup-dev.css */
+
+.clips-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.clip-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.clip-info {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+iframe {
+    border-radius: 6px;
+}
