@@ -1,0 +1,123 @@
+body {
+    font-family: system-ui, sans-serif;
+    padding: 16px;
+    width: 600px;
+    background: #f9fafb;
+    color: #111;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+h1 {
+    font-size: 20px;
+    margin: 0;
+    color: #4338ca;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.control-group label {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.control-group select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn.primary {
+    background: #4338ca;
+    color: white;
+}
+
+.btn.primary:hover {
+    background: #3730a3;
+}
+
+.btn.warning {
+    background: #ca8a04;
+    color: white;
+}
+
+.btn.warning:hover {
+    background: #a16207;
+}
+
+.btn.info {
+    background: #0284c7;
+    color: white;
+}
+
+.btn.info:hover {
+    background: #0369a1;
+}
+
+.btn.secondary {
+    background: #64748b;
+    color: white;
+}
+
+.btn.secondary:hover {
+    background: #475569;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.log-section h2 {
+    font-size: 16px;
+    margin: 0;
+}
+
+.log-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+    height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.log-placeholder {
+    color: #94a3b8;
+    text-align: center;
+    padding: 20px 0;
+}
