@@ -121,3 +121,43 @@ h1 {
     text-align: center;
     padding: 20px 0;
 }
+
+/* popup-dev/popup-dev.css */
+
+.video-clips-output {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.video-block {
+    margin-bottom: 16px;
+}
+
+.video-title-link {
+    font-weight: bold;
+    color: #4338ca;
+    text-decoration: underline;
+}
+
+.clips-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 8px;
+}
+
+.clip-item {
+    padding: 4px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.clip-link {
+    color: #0284c7;
+    text-decoration: underline;
+}

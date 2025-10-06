@@ -39,6 +39,13 @@
     }
   ]'></textarea>
         </div>
+        <div class="control-group">
+            <label for="deepEvalJsonInput">Глубокая оценка GPT (JSON):</label>
+            <textarea id="deepEvalJsonInput" placeholder='[
+    ["Название видео", "id", 9, "Описание..."],
+    ...
+  ]'></textarea>
+        </div>
 
         <!-- Выбор сценария -->
         <div class="control-group">
@@ -59,6 +66,7 @@
                 <option value="step-gpt-get-top10-by-title">3. GPT: получить топ-10 видео по названию</option>
                 <option value="step-transcription">4. Формирование транскрибации</option>
                 <option value="step-gpt-deep-eval">5. GPT: глубокая оценка видео</option>
+                <option value="step-clip-generation">6. Формирование нарезок</option>
             </select>
         </div>
 
@@ -76,6 +84,11 @@
             <div id="logContainer" class="log-container">
                 <div class="log-placeholder">Журнал пуст</div>
             </div>
+        </div>
+
+        <div class="control-group">
+            <label for="videoClipsOutput">Результаты нарезок (видео):</label>
+            <div id="videoClipsOutput" class="video-clips-output"></div>
         </div>
     </div>
 

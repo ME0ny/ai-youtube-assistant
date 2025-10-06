@@ -1,3 +1,9 @@
+
+function timeToSeconds(timeStr) {
+    const [minutes, seconds] = timeStr.split(':').map(Number);
+    return minutes * 60 + seconds;
+}
+
 class DevPopup {
     constructor() {
         this.isRunning = false;
@@ -235,6 +241,91 @@ class DevPopup {
             }
             return;
         }
+
+        if (stepId === 'step-clip-generation') {
+            const userQuery = document.getElementById('userQueryInput').value.trim();
+            if (!userQuery) {
+                this.log(`❌ Пустой запрос пользователя.`, 'error');
+                return;
+            }
+
+            const transcriptJson = document.getElementById('videoTranscriptJsonInput').value.trim();
+            if (!transcriptJson) {
+                this.log(`❌ Пустой JSON с транскрипцией.`, 'error');
+                return;
+            }
+
+            const deepEvalJson = document.getElementById('deepEvalJsonInput').value.trim();
+            if (!deepEvalJson) {
+                this.log(`❌ Пустой JSON с глубокой оценкой.`, 'error');
+                return;
+            }
+
+            this.log(`⏭️ Запуск этапа: Формирование нарезок...`, 'info');
+
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    action: "runClipGenerationStep",
+                    params: { userQuery, transcriptJson, deepEvalJson }
+                });
+
+                if (response?.status === 'success') {
+                    this.log(`✅ Результаты нарезок:`, 'success');
+
+                    // Выводим в консоль
+                    console.group('📋 Результаты нарезок (скопируйте ниже):');
+                    console.table(response.results);
+                    console.groupEnd();
+
+                    console.log('📋 Полный объект (для копирования):');
+                    console.log(JSON.stringify(response.results, null, 2));
+
+                    // Выводим в поле videoClipsOutput
+                    const outputDiv = document.getElementById('videoClipsOutput');
+                    outputDiv.innerHTML = '';
+
+                    for (const item of response.results) {
+                        const videoBlock = document.createElement('div');
+                        videoBlock.className = 'video-block';
+
+                        const titleLink = document.createElement('a');
+                        titleLink.href = `https://www.youtube.com/watch?v=${item.videoId}`;
+                        titleLink.target = '_blank';
+                        titleLink.textContent = `${item.title} - ${item.score}`;
+                        titleLink.className = 'video-title-link';
+
+                        videoBlock.appendChild(titleLink);
+
+                        const clipsList = document.createElement('ul');
+                        clipsList.className = 'clips-list';
+
+                        for (const clip of item.clips) {
+                            const clipItem = document.createElement('li');
+                            clipItem.className = 'clip-item';
+
+                            const timeLink = document.createElement('a');
+                            timeLink.href = `https://www.youtube.com/watch?v=${item.videoId}&t=${timeToSeconds(clip.start)}s`;
+                            timeLink.target = '_blank';
+                            timeLink.textContent = `${clip.title} (${clip.start} - ${clip.end})`;
+                            timeLink.className = 'clip-link';
+
+                            clipItem.appendChild(timeLink);
+                            clipsList.appendChild(clipItem);
+                        }
+
+                        videoBlock.appendChild(clipsList);
+                        outputDiv.appendChild(videoBlock);
+                    }
+
+                    this.log(`Сформировано нарезок: ${response.results.length}`, 'info');
+                } else {
+                    throw new Error(response?.message || 'Неизвестная ошибка');
+                }
+            } catch (err) {
+                this.log(`❌ Ошибка формирования нарезок: ${err.message}`, 'error');
+            }
+            return;
+        }
         // ... остальные этапы
     }
 
@@ -276,6 +367,8 @@ class DevPopup {
             }
         });
     }
+
 }
+
 
 document.addEventListener('DOMContentLoaded', () => new DevPopup());

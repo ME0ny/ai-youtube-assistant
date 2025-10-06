@@ -9,7 +9,7 @@ import { askGPT } from '../ai/ai-service.js';
 import { getProcessedTranscript } from '../ai/transcription-service.js';
 import { formatVideoListForGPT, buildTop10ByTitlePrompt, parseGPTTop10Response } from '../core/utils/ai-utils.js';
 import { evaluateVideo } from '../ai/gpt-evaluator.js';
-
+import { getVideoClips, parseClips } from '../ai/clip-generator.js';
 // 2. Создаём глобальный экземпляр логгера
 export const logger = new Logger({
     maxSize: 1000,
@@ -333,6 +333,104 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             } catch (err) {
                 const errorMsg = err.message || 'Неизвестная ошибка';
                 logger.error(`❌ Ошибка этапа глубокой оценки: ${errorMsg}`, { module: 'GPTDeepEvalStep' });
+                sendResponse({ status: "error", message: errorMsg });
+            }
+        })();
+        return true;
+    }
+
+    if (request.action === "runClipGenerationStep") {
+        (async () => {
+            try {
+                const { userQuery, transcriptJson, deepEvalJson } = request.params;
+
+                if (!userQuery) {
+                    throw new Error("Пустой запрос пользователя.");
+                }
+                if (!transcriptJson) {
+                    throw new Error("Пустой JSON с транскрипцией.");
+                }
+                if (!deepEvalJson) {
+                    throw new Error("Пустой JSON с глубокой оценкой.");
+                }
+
+                let transcriptData, deepEvalData;
+                try {
+                    transcriptData = JSON.parse(transcriptJson);
+                    deepEvalData = JSON.parse(deepEvalJson);
+                } catch (e) {
+                    throw new Error("Неверный формат JSON.");
+                }
+
+                if (!Array.isArray(transcriptData) || !Array.isArray(deepEvalData)) {
+                    throw new Error("JSON должен содержать массивы.");
+                }
+
+                logger.info(`📋 Всего видео с транскрипцией: ${transcriptData.length}`, { module: 'ClipGenerationStep' });
+                logger.info(`📋 Всего видео с глубокой оценкой: ${deepEvalData.length}`, { module: 'ClipGenerationStep' });
+
+                // --- Выводим videoID из транскрипции ---
+                const transcriptVideoIds = transcriptData.map(v => v.videoId);
+                logger.info(`📋 videoID из транскрипции: ${transcriptVideoIds.join(', ')}`, { module: 'ClipGenerationStep' });
+
+                // --- Выводим videoID из глубокой оценки ---
+                const deepEvalVideoIds = deepEvalData.map(v => v[1]);
+                logger.info(`📋 videoID из глубокой оценки: ${deepEvalVideoIds.join(', ')}`, { module: 'ClipGenerationStep' });
+
+                // --- ПРАВИЛЬНАЯ ЛОГИКА: берём топ-3 из deepEvalJson ---
+                const top3 = [...deepEvalData]
+                    .sort((a, b) => b[2] - a[2]) // по третьему элементу (оценке)
+                    .slice(0, 3);
+
+                if (top3.length === 0) {
+                    throw new Error("Нет видео с оценкой для нарезки.");
+                }
+
+                logger.info(`🎬 Начинаем формирование нарезок для ${top3.length} видео...`, { module: 'ClipGenerationStep' });
+
+                const results = [];
+
+                for (const [title, videoId, score] of top3) {
+                    logger.info(`🔍 Ищем транскрипцию для видео: ${videoId}`, { module: 'ClipGenerationStep' });
+
+                    // --- ИЩЕМ транскрипцию в transcriptData ---
+                    const videoTranscript = transcriptData.find(v => v.videoId === videoId);
+
+                    if (!videoTranscript) {
+                        logger.warn(`⚠️ Транскрипция не найдена для видео: ${videoId}`, { module: 'ClipGenerationStep' });
+                        continue;
+                    }
+
+                    logger.success(`✅ Транскрипция найдена для видео: ${videoId}`, { module: 'ClipGenerationStep' });
+
+                    // Собираем текст из чанков 1, 3, 6 (0, 2, 5 в индексах)
+                    const chunksToUse = [0, 2, 5].map(i => videoTranscript.transcript[i]?.chunk_text).filter(Boolean);
+                    const fullTranscript = chunksToUse.join(' ');
+
+                    logger.info(`📝 Обработка нарезок для видео: "${title}" (ID: ${videoId})`, { module: 'ClipGenerationStep' });
+
+                    // Отправляем в GPT
+                    const gptResponse = await getVideoClips(userQuery, fullTranscript);
+
+                    // Парсим результат
+                    const clips = parseClips(gptResponse);
+
+                    results.push({
+                        title,
+                        videoId,
+                        score,
+                        clips
+                    });
+
+                    logger.success(`✅ Нарезки для "${title}" готовы (${clips.length} шт.).`, { module: 'ClipGenerationStep' });
+                }
+
+                logger.success(`🎉 Формирование нарезок завершено.`, { module: 'ClipGenerationStep' });
+
+                sendResponse({ status: "success", results });
+            } catch (err) {
+                const errorMsg = err.message || 'Неизвестная ошибка';
+                logger.error(`❌ Ошибка этапа формирования нарезок: ${errorMsg}`, { module: 'ClipGenerationStep' });
                 sendResponse({ status: "error", message: errorMsg });
             }
         })();
