@@ -11,7 +11,10 @@
 <body>
     <div class="container">
         <h1>🔧 Dev Popup</h1>
-
+        <div class="control-group">
+            <label for="userQueryInput">Запрос пользователя:</label>
+            <input type="text" id="userQueryInput" placeholder="Введите, что вы хотите посмотреть..." />
+        </div>
         <!-- Выбор сценария -->
         <div class="control-group">
             <label for="scenarioSelect">Сценарий:</label>
@@ -28,6 +31,7 @@
             <select id="stepSelect">
                 <option value="step-scroll">1. Скролл страницы</option>
                 <option value="step-parse-videos">2. Спарсить все видео (без Shorts)</option>
+                <option value="step-gpt-analyze">3. Отправить видео в GPT для анализа</option>
                 <option value="step3">3. Найти видео на YouTube</option>
                 <option value="step4">4. Извлечь отрывки из видео</option>
                 <option value="step5">5. Сформировать топ-5 и отобразить</option>

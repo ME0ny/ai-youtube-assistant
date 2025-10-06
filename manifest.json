@@ -37,6 +37,7 @@
         "tabs"
     ],
     "host_permissions": [
-        "*://*.youtube.com/*"
+        "*://*.youtube.com/*",
+        "https://qwen-model-xrkk.onrender.com/*"
     ]
 }

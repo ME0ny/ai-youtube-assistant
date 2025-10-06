@@ -1,5 +1,32 @@
 // content/modules/parser.js
 
+
+/**
+ * Конвертирует строку длительности вида MM:SS или HH:MM:SS в формат HH:MM:SS.
+ * @param {string} duration - Длительность в формате MM:SS или HH:MM:SS.
+ * @returns {string} Длительность в формате HH:MM:SS или '—', если ошибка.
+ */
+function formatDurationToHHMMSS(duration) {
+    if (!duration || duration === '—') return '—';
+
+    const parts = duration.split(':').map(Number).reverse();
+    if (parts.length < 2 || parts.some(isNaN)) return '—';
+
+    const seconds = parts[0] || 0;
+    const minutes = parts[1] || 0;
+    const hours = parts[2] || 0;
+
+    // Если 3 части — уже HH:MM:SS
+    if (parts.length === 3) return duration;
+
+    // Если 2 части — MM:SS
+    if (parts.length === 2) {
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    return '—';
+}
+
 /**
  * Парсит все карточки видео на текущей странице YouTube (без Shorts, стримов, плейлистов).
  * @returns {Array<Object>} Массив объектов с данными видео.
@@ -37,8 +64,7 @@ function parseAllVideoCards() {
 
             // --- Длительность ---
             const durationEl = card.querySelector('.ytd-thumbnail-overlay-time-status-renderer .style-scope, .yt-badge-shape__text');
-            const duration = durationEl ? durationEl.textContent?.trim() || '—' : '—';
-
+            const duration = durationEl ? formatDurationToHHMMSS(durationEl.textContent?.trim()) || '—' : '—';
             // --- Миниатюра ---
             const imgEl = card.querySelector('img[src*="i.ytimg.com/vi/"]');
             const thumbnailUrl = imgEl ? imgEl.src.split('?')[0] : '';

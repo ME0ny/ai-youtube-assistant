@@ -104,6 +104,35 @@ class DevPopup {
             return;
         }
 
+        if (stepId === 'step-gpt-analyze') {
+            const userQuery = document.getElementById('userQueryInput').value.trim();
+            if (!userQuery) {
+                this.log(`❌ Пустой запрос пользователя.`, 'error');
+                return;
+            }
+
+            this.log(`⏭️ Запуск этапа: Отправка видео в GPT для анализа...`, 'info');
+            this.log(`📝 Запрос пользователя: "${userQuery}"`, 'info');
+
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    action: "runGPTAnalyzeStep",
+                    params: { userQuery }
+                });
+
+                if (response?.status === 'success') {
+                    this.log(`✅ Ответ от GPT:`, 'success');
+                    this.log(response.result, 'info');
+                    console.log("Ответ от GPT:", response.result);
+                } else {
+                    throw new Error(response?.message || 'Неизвестная ошибка');
+                }
+            } catch (err) {
+                this.log(`❌ Ошибка GPT-анализа: ${err.message}`, 'error');
+            }
+            return;
+        }
+
         // ... остальные этапы
     }
 
