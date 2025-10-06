@@ -185,6 +185,56 @@ class DevPopup {
             }
             return;
         }
+
+        if (stepId === 'step-gpt-deep-eval') {
+            const userQuery = document.getElementById('userQueryInput').value.trim();
+            if (!userQuery) {
+                this.log(`❌ Пустой запрос пользователя.`, 'error');
+                return;
+            }
+
+            const videoJson = document.getElementById('videoTranscriptJsonInput').value.trim();
+            if (!videoJson) {
+                this.log(`❌ Пустой JSON с видео и транскрипцией.`, 'error');
+                return;
+            }
+
+            this.log(`⏭️ Запуск этапа: GPT — глубокая оценка видео...`, 'info');
+
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    action: "runGPTDeepEvalStep",
+                    params: { userQuery, videoJson }
+                });
+
+                if (response?.status === 'success') {
+                    this.log(`✅ Результаты глубокой оценки:`, 'success');
+
+                    // Формируем итоговый объект
+                    const output = response.results.map(item => [
+                        item.title,
+                        item.videoId,
+                        item.revisedScore,
+                        item.summary
+                    ]);
+
+                    console.group('📋 Результат глубокой оценки (скопируйте ниже):');
+                    console.table(output);
+                    console.groupEnd();
+
+                    // Для удобства копирования — выводим как объект
+                    console.log('📋 Полный массив (для копирования):');
+                    console.log(JSON.stringify(output, null, 2));
+
+                    this.log(`Всего обработано видео: ${output.length}`, 'info');
+                } else {
+                    throw new Error(response?.message || 'Неизвестная ошибка');
+                }
+            } catch (err) {
+                this.log(`❌ Ошибка глубокой оценки: ${err.message}`, 'error');
+            }
+            return;
+        }
         // ... остальные этапы
     }
 

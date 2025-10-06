@@ -25,6 +25,21 @@
     }
   ]'></textarea>
         </div>
+        <div class="control-group">
+            <label for="videoTranscriptJsonInput">Загрузить видео с транскрипцией (JSON):</label>
+            <textarea id="videoTranscriptJsonInput" placeholder='[
+    {
+      "title": "...",
+      "duration": "05:45",
+      "initialScore": 8,
+      "transcript": [
+        { "chunk": 1, "chunk_text": "..." },
+        ...
+      ]
+    }
+  ]'></textarea>
+        </div>
+
         <!-- Выбор сценария -->
         <div class="control-group">
             <label for="scenarioSelect">Сценарий:</label>
@@ -43,6 +58,7 @@
                 <option value="step-parse-videos">2. Спарсить все видео (без Shorts)</option>
                 <option value="step-gpt-get-top10-by-title">3. GPT: получить топ-10 видео по названию</option>
                 <option value="step-transcription">4. Формирование транскрибации</option>
+                <option value="step-gpt-deep-eval">5. GPT: глубокая оценка видео</option>
             </select>
         </div>
 

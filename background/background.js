@@ -8,6 +8,7 @@ import { parseAllVideoCards } from '../core/utils/parser.js';
 import { askGPT } from '../ai/ai-service.js';
 import { getProcessedTranscript } from '../ai/transcription-service.js';
 import { formatVideoListForGPT, buildTop10ByTitlePrompt, parseGPTTop10Response } from '../core/utils/ai-utils.js';
+import { evaluateVideo } from '../ai/gpt-evaluator.js';
 
 // 2. Создаём глобальный экземпляр логгера
 export const logger = new Logger({
@@ -267,5 +268,75 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
+    if (request.action === "runGPTDeepEvalStep") {
+        (async () => {
+            try {
+                const userQuery = request.params?.userQuery?.trim();
+                if (!userQuery) {
+                    throw new Error("Пустой запрос пользователя.");
+                }
+
+                const videoJson = request.params?.videoJson?.trim();
+                if (!videoJson) {
+                    throw new Error("Пустой JSON с видео и транскрипцией.");
+                }
+
+                let videoData;
+                try {
+                    videoData = JSON.parse(videoJson);
+                } catch (e) {
+                    logger.error(`❌ Ошибка парсинга JSON: ${e.message}`, { module: 'GPTDeepEvalStep' });
+                    logger.error(`📋 Введённый JSON: ${videoJson.substring(0, 200)}...`, { module: 'GPTDeepEvalStep' }); // Показываем начало
+                    throw new Error(`Неверный формат JSON: ${e.message}`);
+                }
+
+                if (!Array.isArray(videoData)) {
+                    throw new Error("JSON должен содержать массив объектов с видео.");
+                }
+
+                // Проверим, что каждый элемент массива имеет нужные поля
+                for (let i = 0; i < videoData.length; i++) {
+                    const video = videoData[i];
+                    if (!video.title || !video.duration || video.initialScore == null || !video.videoId || !Array.isArray(video.transcript)) {
+                        logger.error(`❌ Неверная структура видео в элементе ${i}: ${JSON.stringify(video)}`, { module: 'GPTDeepEvalStep' });
+                        throw new Error(`Видео ${i + 1} имеет неверную структуру: отсутствуют необходимые поля.`);
+                    }
+                }
+
+                logger.info(`🔍 Начинаем глубокую оценку ${videoData.length} видео...`, { module: 'GPTDeepEvalStep' });
+
+                const results = [];
+
+                for (const video of videoData) {
+                    const { title, duration, initialScore, transcript, videoId } = video;
+                    logger.info(`📝 Оценка видео: "${title}"`, { module: 'GPTDeepEvalStep' });
+
+                    try {
+                        const { revisedScore, summary } = await evaluateVideo(userQuery, video);
+
+                        results.push({
+                            title,
+                            videoId,
+                            revisedScore,
+                            summary
+                        });
+
+                        logger.success(`✅ Видео "${title}" оценено: ${revisedScore}`, { module: 'GPTDeepEvalStep' });
+                    } catch (err) {
+                        logger.error(`❌ Ошибка оценки для "${title}": ${err.message}`, { module: 'GPTDeepEvalStep' });
+                    }
+                }
+
+                logger.success(`🎉 Глубокая оценка завершена.`, { module: 'GPTDeepEvalStep' });
+
+                sendResponse({ status: "success", results });
+            } catch (err) {
+                const errorMsg = err.message || 'Неизвестная ошибка';
+                logger.error(`❌ Ошибка этапа глубокой оценки: ${errorMsg}`, { module: 'GPTDeepEvalStep' });
+                sendResponse({ status: "error", message: errorMsg });
+            }
+        })();
+        return true;
+    }
     // Другие обработчики можно добавлять сюда по мере разработки
 });
