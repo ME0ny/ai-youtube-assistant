@@ -1,4 +1,5 @@
 Ссылка на демонстрацию работы программы: https://disk.yandex.ru/i/p4Gm-7jPtTEbRw
+Перед началом работы проверьте, что сервис работы с AI запущен, откройте эту страницу: https://qwen-model-xrkk.onrender.com/docs#
 
 AI YouTube Assistant
 Найди самое интересное — без прокрутки и поиска
