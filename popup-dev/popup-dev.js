@@ -23,30 +23,49 @@ class DevPopup {
     }
 
     bindEvents() {
-        this.runScenarioBtn.addEventListener('click', () => this.runScenario());
+        this.runScenarioBtn.addEventListener('click', () => this.runScenarioFromPopupDev());
         this.stopScenarioBtn.addEventListener('click', () => this.stopScenario());
         this.runStepBtn.addEventListener('click', () => this.runStep());
         this.clearLogBtn.addEventListener('click', () => this.clearLog());
     }
 
-    async runScenario() {
+    async runScenarioFromPopupDev() {
         const scenarioId = this.scenarioSelect.value;
-        this.log(`📤 Запуск сценария: ${scenarioId}`);
-        this.setRunning(true);
+        if (!scenarioId) {
+            this.log(`❌ Не выбран сценарий.`, 'error');
+            return;
+        }
+
+        // --- ✅ ЧИТАЕМ userQuery из поля ---
+        const userQuery = document.getElementById('userQueryInput')?.value?.trim();
+
+        // --- ✅ ПРОВЕРЯЕМ, НУЖНО ЛИ он для сценария ---
+        if (scenarioId === 'ai-video-recommendation' && !userQuery) {
+            this.log(`❌ Пустой запрос пользователя для сценария "${scenarioId}".`, 'error');
+            return;
+        }
+
+        this.log(`🚀 Запуск сценария: ${scenarioId}...`, 'info');
+
         try {
             const response = await chrome.runtime.sendMessage({
-                action: 'runScenario',
+                action: "runScenario",
                 scenarioId,
-                params: { devMode: true }
+                // --- ✅ ПЕРЕДАЁМ userQuery в params ---
+                params: {
+                    userQuery, // ✅
+                    devMode: true // ✅ (если нужно)
+                    // ... другие параметры, если понадобятся
+                }
             });
+
             if (response?.status === 'started') {
-                this.log(`✅ Сценарий запущен (ID: ${response.instanceId})`);
+                this.log(`✅ Сценарий запущен (ID: ${response.instanceId})`, 'success');
             } else {
                 throw new Error(response?.message || 'Неизвестная ошибка');
             }
         } catch (err) {
-            this.log(`❌ Ошибка запуска: ${err.message}`, 'error');
-            this.setRunning(false);
+            this.log(`❌ Ошибка запуска сценария: ${err.message}`, 'error');
         }
     }
 
@@ -439,7 +458,76 @@ class DevPopup {
             if (request.type === 'logsCleared') {
                 this.clearLog();
             }
+            if (request.type === 'scenarioStatus' && request.status === 'finished') {
+                this.log(`✅ Сценарий завершён. Загружаем результаты...`, 'success');
+                // Автоматически загружаем и выводим результаты
+                setTimeout(() => this.loadScenarioResults(), 1000); // Небольшая задержка для надёжности
+            }
         });
+    }
+
+    async loadScenarioResults() {
+        try {
+            const result = await chrome.storage.local.get(['aiScenarioResults']);
+            const clipsData = result.aiScenarioResults || [];
+
+            if (clipsData.length === 0) {
+                this.log(`⚠️ Нет сохранённых результатов сценария.`, 'warn');
+                return;
+            }
+
+            this.log(`✅ Загружено ${clipsData.length} видео с нарезками из сценария.`, 'success');
+
+            // Выводим в videoClipsOutput (как в шаге 7)
+            const outputDiv = document.getElementById('videoClipsOutput');
+            outputDiv.innerHTML = '';
+
+            for (const item of clipsData) {
+                const videoBlock = document.createElement('div');
+                videoBlock.className = 'video-block';
+
+                const titleLink = document.createElement('a');
+                titleLink.href = `https://www.youtube.com/watch?v=${item.videoId}`;
+                titleLink.target = '_blank';
+                titleLink.textContent = `${item.title} (Оценка: ${item.score})`;
+                titleLink.className = 'video-title-link';
+
+                videoBlock.appendChild(titleLink);
+
+                const clipsContainer = document.createElement('div');
+                clipsContainer.className = 'clips-container';
+
+                for (const clip of item.clips) {
+                    const clipBlock = document.createElement('div');
+                    clipBlock.className = 'clip-block';
+
+                    const startTimeSec = timeToSeconds(clip.start);
+                    const endTimeSec = timeToSeconds(clip.end);
+
+                    const iframe = document.createElement('iframe');
+                    iframe.width = '320';
+                    iframe.height = '180';
+                    iframe.src = `https://www.youtube.com/embed/${item.videoId}?start=${startTimeSec}&end=${endTimeSec}&autoplay=0`;
+                    iframe.frameBorder = '0';
+                    iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture';
+                    iframe.allowFullscreen = true;
+
+                    clipBlock.appendChild(iframe);
+
+                    const clipInfo = document.createElement('div');
+                    clipInfo.className = 'clip-info';
+                    clipInfo.textContent = `${clip.title} (${clip.start} - ${clip.end})`;
+                    clipBlock.appendChild(clipInfo);
+
+                    clipsContainer.appendChild(clipBlock);
+                }
+
+                videoBlock.appendChild(clipsContainer);
+                outputDiv.appendChild(videoBlock);
+            }
+        } catch (err) {
+            this.log(`❌ Ошибка загрузки результатов: ${err.message}`, 'error');
+        }
     }
 
 }

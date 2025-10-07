@@ -3,6 +3,8 @@
 // 1. Импортируем Logger и адаптер
 import { Logger } from '../core/logger.js';
 import { ChromeStorageLogAdapter } from '../adapters/ChromeStorageLogAdapter.js';
+import { ScenarioEngine } from '../core/scenario-engine.js';
+
 import { scrollPageNTimes } from '../core/utils/scroller.js';
 import { parseAllVideoCards } from '../core/utils/parser.js';
 import { askGPT } from '../ai/ai-service.js';
@@ -10,6 +12,8 @@ import { getProcessedTranscript } from '../ai/transcription-service.js';
 import { formatVideoListForGPT, buildTop10ByTitlePrompt, parseGPTTop10Response } from '../core/utils/ai-utils.js';
 import { evaluateVideo } from '../ai/gpt-evaluator.js';
 import { getVideoClips, parseClips } from '../ai/clip-generator.js';
+import { aiVideoRecommendationScenario } from '../scenarios/ai-video-recommendation-scenario.js';
+
 // 2. Создаём глобальный экземпляр логгера
 export const logger = new Logger({
     maxSize: 1000,
@@ -17,6 +21,10 @@ export const logger = new Logger({
     defaultLevel: 'info'
 });
 
+// 3. Создание экземпляра движка сценариев
+export const scenarioEngine = new ScenarioEngine();
+
+scenarioEngine.registerScenario(aiVideoRecommendationScenario);
 // 3. (Опционально) Добавляем дополнительные адаптеры — например, ConsoleLogAdapter
 // import { ConsoleLogAdapter } from '../adapters/ConsoleLogAdapter.js';
 // logger.addAdapter(new ConsoleLogAdapter());
@@ -435,6 +443,62 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         })();
         return true;
+    }
+
+    if (request.action === "runScenario") {
+        (async () => {
+            // --- ✅ ИЗВЛЕКАЕМ scenarioId ИЗ request ---
+            const { scenarioId, params = {} } = request;
+
+            logger.info(`📥 Получена команда на запуск сценария "${scenarioId}"`, { module: 'Background', meta: params });
+
+            // --- ✅ ОПРЕДЕЛЯЕМ, КАКОЙ СЦЕНАРИЙ ЗАПУСКАТЬ ---
+            let scenarioToRun;
+            if (scenarioId === 'ai-video-recommendation') { // ✅ Теперь scenarioId определена
+                scenarioToRun = aiVideoRecommendationScenario;
+            } else {
+                throw new Error(`Неизвестный ID сценария: ${scenarioId}`); // ✅ Теперь scenarioId определена
+            }
+
+            // --- ✅ ПОЛУЧАЕМ tabId ---
+            let activeTabId = null;
+            logger.debug("Попытка получить активную вкладку...", { module: 'Background' });
+            try {
+                // Попытка 1: Получить активную вкладку в текущем окне
+                const activeTabsCurrentWindow = await chrome.tabs.query({ active: true, currentWindow: true });
+                logger.debug(`Результат query({active: true, currentWindow: true}):`, activeTabsCurrentWindow, { module: 'Background' });
+                if (activeTabsCurrentWindow.length > 0) {
+                    activeTabId = activeTabsCurrentWindow[0].id;
+                }
+            } catch (queryErr1) {
+                logger.warn(`Ошибка при попытке 1 получения активной вкладки: ${queryErr1.message}`, { module: 'Background' });
+                // Попытка 2: Получить активную вкладку в любом окне
+                try {
+                    const activeTabsAnyWindow = await chrome.tabs.query({ active: true });
+                    if (activeTabsAnyWindow.length > 0) {
+                        activeTabId = activeTabsAnyWindow[0].id;
+                    }
+                } catch (queryErr2) {
+                    logger.warn(`Ошибка при попытке 2 получения активной вкладки: ${queryErr2.message}`, { module: 'Background' });
+                }
+            }
+
+            // Если все еще null, логируем предупреждение, но продолжаем (сценарий может сам решить, что делать)
+            if (activeTabId === null) {
+                logger.warn("❌ Не удалось получить активную вкладку. tabId будет null. Сценарий может не работать с контентом страницы.", { module: 'Background' });
+            } else {
+                logger.info(`✅ Активная вкладка определена: ID=${activeTabId}`, { module: 'Background' });
+            }
+
+            // --- ✅ ЗАПУСКАЕМ СЦЕНАРИЙ ---
+            // Передаем параметры и tabId в сценарий через context.params и context.tabId
+            const instanceId = await scenarioEngine.run(scenarioToRun, params, activeTabId);
+
+            logger.info(`🏁 Сценарий "${scenarioId}" запущен с ID: ${instanceId}`, { module: 'Background' });
+            sendResponse({ status: "started", instanceId: instanceId });
+
+        })(); // Конец async функции
+        return true; // keep channel open for async response
     }
     // Другие обработчики можно добавлять сюда по мере разработки
 });
