@@ -32,7 +32,7 @@ export const aiVideoRecommendationScenario = {
 
         // --- ШАГ 1: Скролл страницы трижды ---
         log(`🔍 Шаг 1: Скролл страницы...`, { module: 'AIRecommendationScenario' });
-        await scrollPageNTimes(context, 32, 1000, 1000);
+        await scrollPageNTimes(context, 20, 1000, 1000);
         log(`✅ Шаг 1 завершён.`, { module: 'AIRecommendationScenario' });
         await abortSignal();
 
@@ -132,6 +132,7 @@ export const aiVideoRecommendationScenario = {
 
             // Отправляем в GPT
             const gptClipResponse = await getVideoClips(userQuery, fullTranscript);
+            console.log("gptClipResponse");
             // Парсим результат
             const clips = parseClips(gptClipResponse);
 

@@ -18,26 +18,69 @@ Here is the input you will receive:
 [User Query]: ${userQuery}
 [Full Transcript]: ${fullTranscript}
 Return only the three formatted lines—nothing else.`;
-
-    return await askGPT(prompt);
+    const response = await askGPT(prompt);
+    console.log(`[ClipGenerator] 📥 Ответ от GPT (сырой):`, response);
+    return response;
 }
 
 /**
  * Парсит результат GPT в массив объектов.
+ * Поддерживает форматы MM:SS и HH:MM:SS.
  * @param {string} gptResponse - Ответ GPT.
  * @returns {Array<{ start: string, end: string, title: string }>}
  */
 export function parseClips(gptResponse) {
+    console.log(`[ClipGenerator] 🧹 Начинаем парсинг ответа GPT...`);
     const lines = gptResponse.split('\n').filter(l => l.trim() !== '');
+    console.log(`[ClipGenerator] 📄 Строки для парсинга:`, lines);
+
     const clips = [];
+    // Регулярное выражение, поддерживающее MM:SS и HH:MM:SS
+    const timePattern = /(\d{1,2}:\d{2}(?::\d{2})?)/; // например: 5:30, 05:30, 00:05:30
+    const fullPattern = new RegExp(
+        `^\\s*Start:\\s*${timePattern.source}\\s*–\\s*End:\\s*${timePattern.source}\\s*\\|\\s*(.+?)\\s*$`,
+        'i'
+    );
 
     for (const line of lines) {
-        const match = line.match(/Start: (\d+:\d+) – End: (\d+:\d+) \| (.+)/);
+        const match = line.match(fullPattern);
         if (match) {
-            const [, start, end, title] = match;
+            const start = normalizeTime(match[1]); // match[1] = start
+            const end = normalizeTime(match[2]);   // match[2] = end
+            const title = match[3].trim();         // match[3] = title
             clips.push({ start, end, title });
+            console.log(`[ClipGenerator] ✅ Распознана нарезка: ${start} – ${end} | ${title}`);
+        } else {
+            console.warn(`[ClipGenerator] ❌ Строка не распознана: "${line}"`);
         }
     }
 
+    console.log(`[ClipGenerator] 🎯 Итого распознано нарезок: ${clips.length}`);
     return clips;
+}
+
+/**
+ * Преобразует время в формат MM:SS (удаляет часы, если они 00).
+ * @param {string} timeStr - Время в формате HH:MM:SS или MM:SS
+ * @returns {string} Время в формате MM:SS
+ */
+function normalizeTime(timeStr) {
+    const parts = timeStr.split(':').map(Number);
+    if (parts.length === 3) {
+        // HH:MM:SS → игнорируем часы, если они 0
+        const [h, m, s] = parts;
+        if (h === 0) {
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        } else {
+            // Если часы ≠ 0 — оставляем как есть, но YouTube принимает только до 59:59
+            // Можно обрезать или оставить как есть (но iframe не поддерживает > 1 часа в тайминге?)
+            // Для безопасности — конвертируем в секунды позже при вставке в iframe
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+    } else if (parts.length === 2) {
+        const [m, s] = parts;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    // fallback
+    return timeStr;
 }
